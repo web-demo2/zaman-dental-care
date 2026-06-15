@@ -39,50 +39,55 @@ document.addEventListener("DOMContentLoaded", () => {
     const carousel = document.getElementById("reviews-carousel");
     const prevBtn = document.getElementById("prev-btn");
     const nextBtn = document.getElementById("next-btn");
+    const controls = document.querySelector(".carousel-controls");
     
     if (carousel) {
         const slides = carousel.querySelectorAll(".review-slide");
         let currentIndex = 0;
         const totalSlides = slides.length;
 
-        const updateCarousel = () => {
-            const gap = 32; // 2rem matches CSS gap
-            carousel.style.transform = `translateX(calc(-${currentIndex * 100}% - ${currentIndex * gap}px))`;
-        };
+        if (totalSlides <= 1) {
+            if (controls) controls.style.display = "none";
+        } else {
+            const updateCarousel = () => {
+                const gap = 32; // 2rem matches CSS gap
+                carousel.style.transform = `translateX(calc(-${currentIndex * 100}% - ${currentIndex * gap}px))`;
+            };
 
-        if (nextBtn) {
-            nextBtn.addEventListener("click", () => {
-                currentIndex = (currentIndex + 1) % totalSlides;
-                updateCarousel();
-                resetAutoplay();
-            });
-        }
-
-        if (prevBtn) {
-            prevBtn.addEventListener("click", () => {
-                currentIndex = (currentIndex - 1 + totalSlides) % totalSlides;
-                updateCarousel();
-                resetAutoplay();
-            });
-        }
-
-        // Autoplay carousel every 6 seconds
-        let autoplay = setInterval(() => {
-            if (totalSlides > 0) {
-                currentIndex = (currentIndex + 1) % totalSlides;
-                updateCarousel();
+            if (nextBtn) {
+                nextBtn.addEventListener("click", () => {
+                    currentIndex = (currentIndex + 1) % totalSlides;
+                    updateCarousel();
+                    resetAutoplay();
+                });
             }
-        }, 6000);
 
-        const resetAutoplay = () => {
-            clearInterval(autoplay);
-            autoplay = setInterval(() => {
+            if (prevBtn) {
+                prevBtn.addEventListener("click", () => {
+                    currentIndex = (currentIndex - 1 + totalSlides) % totalSlides;
+                    updateCarousel();
+                    resetAutoplay();
+                });
+            }
+
+            // Autoplay carousel every 6 seconds
+            let autoplay = setInterval(() => {
                 if (totalSlides > 0) {
                     currentIndex = (currentIndex + 1) % totalSlides;
                     updateCarousel();
                 }
             }, 6000);
-        };
+
+            const resetAutoplay = () => {
+                clearInterval(autoplay);
+                autoplay = setInterval(() => {
+                    if (totalSlides > 0) {
+                        currentIndex = (currentIndex + 1) % totalSlides;
+                        updateCarousel();
+                    }
+                }, 6000);
+            };
+        }
     }
 
     // 4. Highlight current day in business hours and update today's status banner
@@ -135,20 +140,28 @@ document.addEventListener("DOMContentLoaded", () => {
             let hasParsed = false;
             
             if (parts.length === 2) {
-                const parseTimeStr = (timeStr) => {
-                    const cleanStr = timeStr.trim().toUpperCase();
-                    const match = cleanStr.match(/^(\d+):(\d+)\s*(AM|PM)$/);
+                const parseTimeStr = (timeStr, fallbackPeriod) => {
+                    const cleanStr = timeStr.trim().replace(/\s+/g, " ").toUpperCase();
+                    const match = cleanStr.match(/^(\d+)(?::(\d+))?\s*(AM|PM)?$/);
                     if (!match) return null;
-                    let hrs = parseInt(match[1]);
-                    const mins = parseInt(match[2]);
-                    const period = match[3];
+                    let hrs = parseInt(match[1], 10);
+                    const mins = match[2] ? parseInt(match[2], 10) : 0;
+                    let period = match[3] || fallbackPeriod;
+                    if (!period) {
+                        period = hrs < 9 ? "PM" : "AM";
+                    }
                     if (period === "PM" && hrs < 12) hrs += 12;
                     if (period === "AM" && hrs === 12) hrs = 0;
                     return hrs * 60 + mins;
                 };
                 
-                const startMins = parseTimeStr(parts[0]);
+                const endStr = parts[1].trim().toUpperCase();
+                let period = null;
+                if (endStr.endsWith("PM")) period = "PM";
+                else if (endStr.endsWith("AM")) period = "AM";
+                
                 const endMins = parseTimeStr(parts[1]);
+                const startMins = parseTimeStr(parts[0], period);
                 
                 if (startMins !== null && endMins !== null) {
                     hasParsed = true;
