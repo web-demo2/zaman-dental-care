@@ -85,6 +85,103 @@ document.addEventListener("DOMContentLoaded", () => {
         };
     }
 
+    // 4. Highlight current day in business hours and update today's status banner
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const todayName = days[new Date().getDay()];
+    
+    const hoursRows = document.querySelectorAll(".hours-row");
+    let todayHours = "";
+    
+    hoursRows.forEach(row => {
+        const dayLabel = row.querySelector("span");
+        if (dayLabel) {
+            const dayText = dayLabel.textContent.trim();
+            if (dayText.toLowerCase() === todayName.toLowerCase()) {
+                row.classList.add("current-day");
+                
+                const badge = document.createElement("span");
+                badge.className = "today-badge";
+                badge.textContent = "Today";
+                dayLabel.appendChild(badge);
+                
+                const hoursValEl = row.querySelector("strong");
+                if (hoursValEl) {
+                    todayHours = hoursValEl.textContent.trim();
+                }
+            }
+        }
+    });
+
+    const statusBanner = document.getElementById("today-status-banner");
+    const statusDay = document.getElementById("today-status-day");
+    const statusTime = document.getElementById("today-status-time");
+    const statusBadge = document.getElementById("today-status-badge");
+    const statusIcon = statusBanner ? statusBanner.querySelector(".today-status-icon") : null;
+
+    if (statusBanner && todayHours) {
+        const isClosed = todayHours.toLowerCase() === "closed";
+        statusDay.textContent = `Today is ${todayName}`;
+        
+        if (isClosed) {
+            statusTime.textContent = "Clinic is Closed Today";
+            statusBadge.textContent = "Closed";
+            statusBadge.className = "today-status-badge closed";
+            statusBanner.classList.add("closed-today");
+            if (statusIcon) statusIcon.textContent = "❌";
+        } else {
+            // Try to parse if it is open now or closed now
+            const parts = todayHours.split(/(?:to|-)/i);
+            let isNowOpen = true; // default fallback
+            let hasParsed = false;
+            
+            if (parts.length === 2) {
+                const parseTimeStr = (timeStr) => {
+                    const cleanStr = timeStr.trim().toUpperCase();
+                    const match = cleanStr.match(/^(\d+):(\d+)\s*(AM|PM)$/);
+                    if (!match) return null;
+                    let hrs = parseInt(match[1]);
+                    const mins = parseInt(match[2]);
+                    const period = match[3];
+                    if (period === "PM" && hrs < 12) hrs += 12;
+                    if (period === "AM" && hrs === 12) hrs = 0;
+                    return hrs * 60 + mins;
+                };
+                
+                const startMins = parseTimeStr(parts[0]);
+                const endMins = parseTimeStr(parts[1]);
+                
+                if (startMins !== null && endMins !== null) {
+                    hasParsed = true;
+                    const now = new Date();
+                    const currentMins = now.getHours() * 60 + now.getMinutes();
+                    if (currentMins >= startMins && currentMins < endMins) {
+                        isNowOpen = true;
+                    } else {
+                        isNowOpen = false;
+                    }
+                }
+            }
+            
+            statusTime.textContent = `Hours: ${todayHours}`;
+            if (hasParsed) {
+                if (isNowOpen) {
+                    statusBadge.textContent = "Open Now";
+                    statusBadge.className = "today-status-badge open";
+                    if (statusIcon) statusIcon.textContent = "✅";
+                } else {
+                    statusBadge.textContent = "Closed Now";
+                    statusBadge.className = "today-status-badge closed";
+                    statusBanner.classList.add("closed-today");
+                    if (statusIcon) statusIcon.textContent = "❌";
+                }
+            } else {
+                statusBadge.textContent = "Open Today";
+                statusBadge.className = "today-status-badge open";
+                if (statusIcon) statusIcon.textContent = "⏰";
+            }
+        }
+    }
+
     // 3. Scroll Reveal Micro-animations
     const revealElements = document.querySelectorAll(".scroll-reveal");
     
